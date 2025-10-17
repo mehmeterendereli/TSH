@@ -32,15 +32,16 @@ TSH Native Diagnostics is an educational Windows x64 memory introspection toolki
 > Note: Producing a loadable .sys requires the WDK toolset, driver signing certificates, and additional linker flags that will be incorporated as the kernel feature set matures.
 
 ## Current Status
-- User mode now exposes ProcessManager, PatternScanner, PointerResolver, ScanSession, ResultRefiner, ValueMonitor, and HookController scaffolding.
-- Kernel mode is partitioned into Memory, Scan, Pointer, Monitor, and Instrumentation handlers with IOCTL routing in place.
-- Shared protocol definitions enumerate future request and response payloads for memory regions, scans, pointer traces, monitors, and patch operations.
+- Interactive CLI shell supports process enumeration, driver status, attach, scan, refine, and result inspection workflows.
+- Chunked pattern scanner handles byte, integer, float, and string comparisons across driver-fed or Win32 enumerated memory regions.
+- Kernel driver services region queries with privilege validation, `ZwQueryVirtualMemory` traversal, and debug trace logging hooks.
+- Shared protocol layer defines IOCTL contracts for regions, scans, pointer traces, monitors, and patch operations.
 
 ## Next Implementation Steps
-1. Implement real scan pipelines (typed comparers, asynchronous chunking) and wire them into a CLI or ImGui interface.
-2. Flesh out kernel subsystems with guarded access checks, paging-aware traversals, and ETW logging.
-3. Define end-to-end IOCTL payloads for scan requests, pointer queries, and monitor streams; add validation, auditing, and throttling logic.
-4. Introduce native unit tests (user and driver) and scripted deployment helpers under tools/.
+1. Extend kernel handlers for pattern scans, pointer tracing, monitor subscriptions, and patch orchestration with audit trails.
+2. Replace Win32 `ReadProcessMemory` usage with driver-mediated transfers for high integrity and guard-page aware streaming.
+3. Layer an ImGui front end (optional) over the CLI core for richer visualisation of regions, hits, and monitors.
+4. Add native unit/integration tests plus ETW consumer tooling under `tests/` and `tools/`.
 
 ## Responsible Use
 Operate the toolkit only on systems and processes you own or are explicitly authorised to inspect. Always follow platform security guidelines, licensing terms, and local legislation.

@@ -2,8 +2,9 @@
 
 #include "shared/DriverIoctl.h"
 
-#include <array>
 #include <vector>
+#include <windows.h>
+#include <errhandlingapi.h>
 
 
 namespace tsh::user
@@ -107,33 +108,48 @@ namespace tsh::user
         const tsh::protocol::RegionQueryRequest request{ processId, 0 };
         auto query = request.ToCStruct();
 
-        std::array<TSH_MEMORY_REGION, 256> regionBuffer{};
+        constexpr std::size_t kInitialCapacity = 128;
+        constexpr std::size_t kMaximumCapacity = 16 * 1024;
 
-        DWORD bytesReturned = 0;
-        BOOL result = ::DeviceIoControl(
-            m_deviceHandle,
-            IOCTL_TSH_QUERY_REGIONS,
-            &query,
-            sizeof(query),
-            regionBuffer.data(),
-            static_cast<DWORD>(regionBuffer.size() * sizeof(TSH_MEMORY_REGION)),
-            &bytesReturned,
-            nullptr);
+        std::vector<TSH_MEMORY_REGION> regionBuffer(kInitialCapacity);
 
-        if (!result)
+        while (true)
         {
-            return false;
+            DWORD bytesReturned = 0;
+            BOOL result = ::DeviceIoControl(
+                m_deviceHandle,
+                IOCTL_TSH_QUERY_REGIONS,
+                &query,
+                sizeof(query),
+                regionBuffer.data(),
+                static_cast<DWORD>(regionBuffer.size() * sizeof(TSH_MEMORY_REGION)),
+                &bytesReturned,
+                nullptr);
+
+            if (!result)
+            {
+                const DWORD error = ::GetLastError();
+                if ((error == ERROR_MORE_DATA || error == ERROR_INSUFFICIENT_BUFFER) &&
+                    regionBuffer.size() < kMaximumCapacity)
+                {
+                    regionBuffer.resize(regionBuffer.size() * 2);
+                    continue;
+                }
+
+                return false;
+            }
+
+            const std::size_t regionCount = bytesReturned / sizeof(TSH_MEMORY_REGION);
+
+            regions.clear();
+            regions.reserve(regionCount);
+
+            for (std::size_t index = 0; index < regionCount; ++index)
+            {
+                regions.emplace_back(regionBuffer[index]);
+            }
+
+            return true;
         }
-
-        const std::size_t regionCount = bytesReturned / sizeof(TSH_MEMORY_REGION);
-        regions.clear();
-        regions.reserve(regionCount);
-
-        for (std::size_t i = 0; i < regionCount; ++i)
-        {
-            regions.emplace_back(regionBuffer[i]);
-        }
-
-        return true;
     }
 } // namespace tsh::user

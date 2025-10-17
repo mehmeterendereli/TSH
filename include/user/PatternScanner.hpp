@@ -4,6 +4,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <span>
 #include <vector>
 
 namespace tsh::user
@@ -34,8 +35,7 @@ namespace tsh::user
     public:
         PatternScanner() = default;
 
-        std::vector<ScanHit> ExecuteInitialScan(HANDLE process, ScanDataType type, const void* value, std::size_t valueSize, const std::vector<ScanRegion>& regions) const;
-        std::vector<ScanHit> RefineHits(HANDLE process, ScanDataType type, const void* value, std::size_t valueSize, const std::vector<ScanHit>& existingHits) const;
+        std::vector<ScanHit> ExecuteInitialScan(HANDLE process, ScanDataType type, std::span<const std::byte> pattern, const std::vector<ScanRegion>& regions) const;
+        std::vector<ScanHit> RefineHits(HANDLE process, ScanDataType type, std::span<const std::byte> pattern, const std::vector<ScanHit>& existingHits) const;
     };
 } // namespace tsh::user
-
