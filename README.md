@@ -1,4 +1,4 @@
-# TSH Native Diagnostics
+﻿# TSH Native Diagnostics
 
 TSH Native Diagnostics is an educational Windows x64 memory introspection toolkit implemented entirely in C++ and kernel-mode C. It demonstrates secure driver communication, pointer analysis, pattern scans, and live telemetry for processes that the user owns.
 
@@ -10,6 +10,45 @@ TSH Native Diagnostics is an educational Windows x64 memory introspection toolki
 - Extensible instrumentation: hooks for optional self-process patching with reversible trampolines.
 - Optional Dear ImGui shell: launch `tsh_user.exe --imgui` (with `-DTSH_ENABLE_IMGUI=ON`) for a native renderer scaffold.
 - Auditable design: clear separation between privileged operations and UI logic, with space for ETW telemetry and logging.
+
+## How It Works
+
+1. **Attach & Verify** â€“ `ProcessManager` enumerates processes, the driver validates ownership or `SeDebugPrivilege` before servicing requests.
+2. **Broker All Memory I/O** â€“ `MemoryAccessor` funnels reads/writes/PTR traces through the driver (`IOCTL_TSH_*`). Safe Win32 fallbacks keep the tools usable without the driver.
+3. **Analyse & Monitor** â€“ `PatternScanner` performs chunked scans with overlap handling, `PointerResolver` follows multi-level chains, and `ValueMonitor` polls addresses (CLI table + ImGui graphs).
+4. **Instrument Responsibly** â€“ `HookController` stages reversible patches, handing payloads to the kernel which applies them via `MmCopyVirtualMemory`.
+5. **Iterate via Sessions** â€“ `ScanSession` caches region metadata and the canonical pattern so `refine` only touches surviving hits.
+
+## Architecture at a Glance
+
+| Layer               | Responsibilities                                                                                                               |
+|---------------------|--------------------------------------------------------------------------------------------------------------------------------|
+| **User (CLI/ImGui)**| Process attach, memory scanning, pointer tracing, monitor snapshots, patch orchestration, and UI bindings (ImGui panels).      |
+| **Shared**          | Protocol structures/typedefs, IOCTL constants, helper macros (`TSH_MIN`, `TSH_MONITOR_SAMPLE_MAX_BYTES`).                      |
+| **Kernel**          | IOCTL dispatch, region enumeration, pointer walking, monitor snapshots, patch execution, and ownership/privilege enforcement. |
+
+## Driver Capabilities
+
+| IOCTL                       | Purpose                                      | Safeguards & Notes                                                  |
+|-----------------------------|-----------------------------------------------|---------------------------------------------------------------------|
+| `IOCTL_TSH_QUERY_REGIONS`   | Enumerate committed VADs                      | Ownership check, `ZwQueryVirtualMemory` traversal                   |
+| `IOCTL_TSH_READ_MEMORY`     | Read arbitrary user memory                    | `MmCopyVirtualMemory` copy-out, bounded to caller buffer            |
+| `IOCTL_TSH_POINTER_TRACE`   | Follow pointer chains (base + offsets)       | Validates depth/offsets, returns partial chain if a hop fails       |
+| `IOCTL_TSH_MONITOR_CONTROL` | Snapshot N addresses (â‰¤64 bytes each)         | Throttles entry count, emits per-address NTSTATUS + captured size   |
+| `IOCTL_TSH_PATCH_REQUEST`   | Apply patch payload to self-owned processes   | Requires write/operation access; returns bytes written + NTSTATUS   |
+
+All protocol structs have C typedefs (`PTSH_*`) and C++ wrappers (`Protocol.hpp`) to keep serialization simple and consistent.
+
+## Educational Walkthrough
+
+Need a concrete example? See [`docs/usage-guide.md`](docs/usage-guide.md) for a step-by-step scenario that:
+
+1. Types `mehmet` inside Notepad.
+2. Runs UTF-16 scans and refines after edits.
+3. Uses `monitor` and `patch` to observe/edit the buffer live.
+4. Repeats the workflow inside the ImGui front end (pointer table, monitor graph, patch widgets).
+
+Following that walkthrough once will familiarise you with the end-to-end tooling.
 
 ## Repository Layout
 - CMakeLists.txt - root build script orchestrating user, driver, and test targets.
@@ -44,24 +83,29 @@ Driver features require the privileged channel; when the WDK is unavailable, the
 3. Panels: **Processes** (attach), **Pointer Trace**, **Monitor**, and **Patch** mirror the CLI functionality, plotting monitor bytes with `ImGui::PlotLines` and tabulating pointer chains.
 4. Integrate your preferred renderer/platform backend (e.g., Win32 + DirectX11) before deployment; the stub ships a single-frame loop to keep the sample self-contained.
 ## Building
-1. Open an x64 Native Tools Command Prompt for VS 2022 with the Windows Driver Kit environment configured.
-2. Run build.bat. The script configures CMake under build\vs and compiles the user executable and driver library in Debug mode.
-3. To rebuild the driver target for Release, execute build_driver.bat after the initial configuration.
-4. (Optional) Enable the ImGui shell with `cmake -DTSH_ENABLE_IMGUI=ON` and place the Dear ImGui sources under `external/imgui/`.
+1. Open an **x64 Native Tools Command Prompt for VS 2022** with the Windows Driver Kit **10.0.26100** environment available (the overrides in `src/kernel/CMakeLists.txt` assume the default `C:/Program Files (x86)/Windows Kits/10` layout).
+2. Configure once:  
+   `cmake -S . -B build/vs -A x64`
+3. Build the user-mode and kernel artefacts in **Release** mode (kernel drivers cannot link against the MSVC debug runtime):
+   ```cmd
+   cmake --build build/vs --config Release --target TSH.Driver
+   cmake --build build/vs --config Release --target TSH.User
+   ```
+4. Optional (user-mode debugging only): `build.bat` or `cmake --build build/vs --config Debug --target TSH.User`
+5. Optional (ImGui): enable with `cmake -DTSH_ENABLE_IMGUI=ON ...` and provide Dear ImGui plus a renderer backend under `external/imgui/`.
 
-> Note: Producing a loadable .sys requires the WDK toolset, driver signing certificates, and additional linker flags that will be incorporated as the kernel feature set matures.
+The driver binary lands in `build/vs/driver/Release/tsh_driver.sys`. Sign it or enable test-signing before loading with `sc create` / `sc start`.
 
-## Current Status
-- Interactive CLI shell supports process enumeration, driver status, attach, scan, refine, and result inspection workflows.
-- Chunked pattern scanner handles byte, integer, float, and string comparisons across driver-fed or Win32 enumerated memory regions.
-- Kernel driver services region queries with privilege validation, `ZwQueryVirtualMemory` traversal, and debug trace logging hooks.
-- Shared protocol layer defines IOCTL contracts for regions, scans, pointer traces, monitors, and patch operations.
+> Producing a production-ready `.sys` still requires the full WDK toolchain, updated INF/CAT packaging, and appropriate signatures. Adjust the hard-coded Kits paths if your installation uses a different version.
 
-## Next Implementation Steps
-1. Extend kernel handlers for pattern scans, pointer tracing, monitor subscriptions, and patch orchestration with audit trails.
-2. Replace Win32 `ReadProcessMemory` usage with driver-mediated transfers for high integrity and guard-page aware streaming.
-3. Layer an ImGui front end (optional) over the CLI core for richer visualisation of regions, hits, and monitors.
-4. Add native unit/integration tests plus ETW consumer tooling under `tests/` and `tools/`.
+## Testing & Validation
+- `cmake --build build/vs --config Release --target TSH.User` – rebuild the CLI after code changes.
+- `cmake --build build/vs --config Release --target TSH.Driver` – regenerate the driver (Release configuration only).
+- `cmake --build build/vs --config Release --target TSH.Driver -- /t:Clean` – clean kernel artefacts before a fresh build.
+- `tsh_user.exe --imgui --imgui-backend` – once a renderer backend is wired in, bring up the visual tooling.
 
-## Responsible Use
-Operate the toolkit only on systems and processes you own or are explicitly authorised to inspect. Always follow platform security guidelines, licensing terms, and local legislation.
+For automated regression, consider adding Catch2/GoogleTest targets under `tests/` or scripting CLI sessions that assert on the textual output produced by each command.
+
+
+
+
