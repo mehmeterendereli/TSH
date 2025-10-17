@@ -133,7 +133,7 @@ class MemoryPatcherConsole(cmd.Cmd):
         self._current_pid = pid
         self._current_type = ValueType.INT32
         self._watch_manager.stop()
-        self._watch_manager.clear()
+        self._watch_manager.clear_all()
         self._watch_manager.set_accessor(accessor)
         self._console.print(f"Attached to process [green]{pid}[/green].")
         LOGGER.info("Attached to process %s", pid)
