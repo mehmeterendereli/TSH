@@ -1,5 +1,7 @@
 #include "user/ValueMonitor.hpp"
 
+#include <span>
+#include <thread>
 #include <vector>
 
 namespace tsh::user

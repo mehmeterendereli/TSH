@@ -14,18 +14,34 @@ TSH Native Diagnostics is an educational Windows x64 memory introspection toolki
 ## Repository Layout
 - CMakeLists.txt - root build script orchestrating user, driver, and test targets.
 - build/ - helper scripts and (optional) out-of-source build tree.
-  - build.bat - configure and build both components with CMake.
-  - build_driver.bat - rebuild only the kernel target after configuration.
+- build.bat - configure and build both components with CMake.
+- build_driver.bat - rebuild only the kernel target after configuration.
 - include/
-  - shared/ - IOCTL codes, protocol structs, and cross-layer helpers.
-  - user/ - user-mode interfaces (driver channel, process manager, scanners, monitors, instrumentation helpers).
-  - kernel/ - driver-side helper declarations for IOCTL dispatchers.
+- shared/ - IOCTL codes, protocol structs, and cross-layer helpers.
+- user/ - user-mode interfaces (driver channel, process manager, scanners, monitors, instrumentation helpers).
+- kernel/ - driver-side helper declarations for IOCTL dispatchers.
 - src/user/ - Win32 entry point, communications layer, and native engine modules (Core/, Analysis/, Monitoring/, Instrumentation/).
 - src/kernel/ - WDM driver skeleton plus modular subsystems (Memory/, Scan/, Pointer/, Monitor/, Instrumentation/).
 - tests/ - placeholder CMake target for future unit and integration suites.
 - docs/ - design notes, threat model, and developer guides (to be populated).
 - tools/ - deployment scripts and diagnostic utilities (to be populated).
 
+## CLI Commands
+- `attach <pid>`: bind to a process you own and prime the driver channel.
+- `scan <type> <value>`: run the initial sweep (types: int32, uint32, float, ascii, utf16, bytes).
+- `refine <value>`: filter the existing hit list with a new value.
+- `results [count]`: dump the first `count` hits with live values via the driver accessor.
+- `pointer <addr> <offsets...>`: resolve multi-level pointer chains (hex or decimal addresses/offsets).
+- `monitor <addr[:size],...>`: snapshot addresses via IOCTL telemetry (size defaults to 4 bytes).
+- `patch <addr> <hex-bytes>`: emit a patch request through the privileged driver path.
+
+Driver features require the privileged channel; when the WDK is unavailable, the build skips the kernel project and the CLI automatically falls back to Win32 APIs for read/monitor operations.
+
+## ImGui Shell
+1. Configure with Dear ImGui sources available and enable the flag: `cmake -DTSH_ENABLE_IMGUI=ON ...`.
+2. Launch `tsh_user.exe --imgui` to open the experimental UI.
+3. Panels: **Processes** (attach), **Pointer Trace**, **Monitor**, and **Patch** mirror the CLI functionality, plotting monitor bytes with `ImGui::PlotLines` and tabulating pointer chains.
+4. Integrate your preferred renderer/platform backend (e.g., Win32 + DirectX11) before deployment; the stub ships a single-frame loop to keep the sample self-contained.
 ## Building
 1. Open an x64 Native Tools Command Prompt for VS 2022 with the Windows Driver Kit environment configured.
 2. Run build.bat. The script configures CMake under build\vs and compiles the user executable and driver library in Debug mode.

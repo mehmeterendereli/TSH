@@ -1,3 +1,21 @@
+find_path(WDK_INCLUDE_DIR
+    NAMES ntddk.h
+    HINTS
+        "$ENV{WDK_DIR}/Include"
+        "C:/Program Files (x86)/Windows Kits/10/Include"
+        "C:/Program Files/Windows Kits/10/Include"
+    PATH_SUFFIXES
+        km
+        km/shared
+        km/crt
+        km/ddk
+)
+
+if (NOT WDK_INCLUDE_DIR)
+    message(WARNING "Windows Driver Kit headers not located, skipping kernel driver build.")
+    return()
+endif()
+
 set(TSH_KERNEL_SOURCES
     DriverEntry.c
     Common/DriverUtils.c
@@ -13,6 +31,7 @@ add_library(TSH.Driver STATIC ${TSH_KERNEL_SOURCES})
 target_include_directories(TSH.Driver
     PRIVATE
         ${CMAKE_SOURCE_DIR}/include
+        ${WDK_INCLUDE_DIR}
 )
 
 target_compile_definitions(TSH.Driver

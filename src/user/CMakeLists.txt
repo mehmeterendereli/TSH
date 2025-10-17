@@ -11,7 +11,7 @@ set(TSH_USER_SOURCES
     Instrumentation/HookController.cpp
 )
 
-add_executable(TSH.User ${TSH_USER_SOURCES})
+add_executable(TSH.User WIN32 ${TSH_USER_SOURCES})
 
 target_include_directories(TSH.User
     PRIVATE

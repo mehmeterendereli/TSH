@@ -129,7 +129,11 @@ namespace tsh::protocol
             , status(sample.Status)
         {
             const auto count = std::min<std::uint32_t>(sample.CapturedSize, TSH_MONITOR_SAMPLE_MAX_BYTES);
-            data.assign(sample.Data, sample.Data + count);
+            data.resize(count);
+            for (std::uint32_t i = 0; i < count; ++i)
+            {
+                data[i] = static_cast<std::byte>(sample.Data[i]);
+            }
         }
     };
 
