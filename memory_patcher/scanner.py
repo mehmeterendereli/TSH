@@ -50,7 +50,8 @@ class MemoryScanner:
                 logger.debug("Read failed for address 0x%X during refine", hit.address)
                 continue
             if current.startswith(new_value.raw):
-                updated_hits.append(MemoryHit(address=hit.address, value=new_value))
+                hit.value = new_value
+                updated_hits.append(hit)
 
         session.hits = updated_hits
         session.raw_query = new_value.display
