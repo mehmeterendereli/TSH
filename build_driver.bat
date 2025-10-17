@@ -1,16 +1,17 @@
 @echo off
-setlocal
+setlocal enabledelayedexpansion
 
-set PROJECT=%~dp0driver\MemoryPatcherDrv.vcxproj
-if not exist "%PROJECT%" (
-    echo Driver project not found at %PROJECT%
+set BUILD_DIR=%~dp0build\vs
+if not exist "%BUILD_DIR%" (
+    echo [!] Build directory not found. Run build.bat first to configure CMake.
     exit /b 1
 )
 
-echo [*] Building MemoryPatcher kernel driver (Release|x64)...
-msbuild "%PROJECT%" /p:Configuration=Release /p:Platform=x64 || goto :error
+echo [*] Building TSH.Driver (Release|x64) via CMake...
+cmake --build "%BUILD_DIR%" --target TSH.Driver --config Release
+if errorlevel 1 goto :error
 
-echo [*] Build complete. Output located under driver\build\driver\
+echo [*] Driver build complete. Artifacts under %BUILD_DIR%\driver.
 exit /b 0
 
 :error

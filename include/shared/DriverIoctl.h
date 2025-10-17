@@ -1,0 +1,23 @@
+
+#pragma once
+
+#include <winioctl.h>
+#include "shared/Protocol.h"
+
+#ifdef _KERNEL_MODE
+#include <ntddk.h>
+#endif
+
+//
+// IOCTL interface shared between user-mode client and kernel driver.
+// Command identifiers and payload structures will be defined here.
+//
+
+#define FILE_DEVICE_TSH 0xA110
+
+#define IOCTL_TSH_PING             CTL_CODE(FILE_DEVICE_TSH, 0x800, METHOD_BUFFERED, FILE_ANY_ACCESS)
+#define IOCTL_TSH_QUERY_REGIONS    CTL_CODE(FILE_DEVICE_TSH, 0x801, METHOD_BUFFERED, FILE_ANY_ACCESS)
+#define IOCTL_TSH_PATTERN_SCAN     CTL_CODE(FILE_DEVICE_TSH, 0x802, METHOD_BUFFERED, FILE_ANY_ACCESS)
+#define IOCTL_TSH_POINTER_TRACE    CTL_CODE(FILE_DEVICE_TSH, 0x803, METHOD_BUFFERED, FILE_ANY_ACCESS)
+#define IOCTL_TSH_MONITOR_CONTROL  CTL_CODE(FILE_DEVICE_TSH, 0x804, METHOD_BUFFERED, FILE_ANY_ACCESS)
+#define IOCTL_TSH_PATCH_REQUEST    CTL_CODE(FILE_DEVICE_TSH, 0x805, METHOD_BUFFERED, FILE_ANY_ACCESS)

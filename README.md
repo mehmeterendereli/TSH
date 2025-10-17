@@ -1,73 +1,46 @@
-# MemoryPatcher
+# TSH Native Diagnostics
 
-MemoryPatcher is a Windows 10/11 x64 training utility written in Python. Attach to a target process, locate interesting values with full memory scans, refine the hit list as values change, and keep a real time watch or freeze running on selected addresses. An optional kernel-mode driver is included for privileged read/write operations when user mode APIs are blocked.
+TSH Native Diagnostics is an educational Windows x64 memory introspection toolkit implemented entirely in C++ and kernel-mode C. It demonstrates secure driver communication, pointer analysis, pattern scans, and live telemetry for processes that the user owns.
 
 ## Highlights
-- **Command driven console** – `attach`, `search`, `refine`, `read`, `write`, `watch`, and `freeze` are one-liners.
-- **Value refinement** – repeat the last search against the current hit list to isolate dynamic values quickly.
-- **Live watch & freeze** – poll addresses at millisecond cadence, print changes, or automatically restore a frozen value.
-- **Driver aware** – when `MemoryPatcherDrv.sys` is present, the console routes reads/writes through the kernel bridge and falls back to Win32 APIs if anything fails.
-- **Structured logging** – every operation is logged under `logs/memorypatcher.log` for later review.
-- **Test covered** – unit and integration tests exercise the scanner core, watch manager, and console flow (`python -m pytest`).
+- Pure native stack: Win32/ImGui-friendly user-mode front end and WDM-style kernel back end.
+- Protected driver channel: custom IOCTL protocol over DeviceIoControl, shared payload definitions, and rigorous validation.
+- Memory tooling primitives: process enumeration, pattern scanning, result refinement, pointer chain scaffolding, and live value monitoring hooks.
+- Extensible instrumentation: hooks for optional self-process patching with reversible trampolines.
+- Auditable design: clear separation between privileged operations and UI logic, with space for ETW telemetry and logging.
 
 ## Repository Layout
-- `memory_patcher/` – user-mode library (access layer, scanner, console, watch manager, driver bridge).
-- `scripts/run_console.py` – convenience launcher for the interactive console.
-- `tests/` – pytest suite covering encoding, scanning, watch/freeze loops, and the CLI workflow.
-- `driver/` – kernel driver sources (`MemoryPatcherDrv.c`, `MemoryPatcherIoctl.h`, Visual Studio project).
-- `build.bat` – bootstrap virtual environment installation and run the full test suite.
-- `build_driver.bat` – invoke MSBuild to compile the kernel driver (requires the WDK command prompt).
+- CMakeLists.txt - root build script orchestrating user, driver, and test targets.
+- build/ - helper scripts and (optional) out-of-source build tree.
+  - build.bat - configure and build both components with CMake.
+  - build_driver.bat - rebuild only the kernel target after configuration.
+- include/
+  - shared/ - IOCTL codes, protocol structs, and cross-layer helpers.
+  - user/ - user-mode interfaces (driver channel, process manager, scanners, monitors, instrumentation helpers).
+  - kernel/ - driver-side helper declarations for IOCTL dispatchers.
+- src/user/ - Win32 entry point, communications layer, and native engine modules (Core/, Analysis/, Monitoring/, Instrumentation/).
+- src/kernel/ - WDM driver skeleton plus modular subsystems (Memory/, Scan/, Pointer/, Monitor/, Instrumentation/).
+- tests/ - placeholder CMake target for future unit and integration suites.
+- docs/ - design notes, threat model, and developer guides (to be populated).
+- tools/ - deployment scripts and diagnostic utilities (to be populated).
 
-## Quick Start
-```cmd
-python -m pip install -e .[dev]
-python scripts\run_console.py
-```
-At the `mp>` prompt use commands such as:
-```
-attach 1234
-search int32 1500
-results 10
-watch add 1,2
-freeze add 1 9999
-interval 100
-status
-```
-Type `help` or `?` to see all commands. `exit` or `Ctrl+Z` leaves the console.
+## Building
+1. Open an x64 Native Tools Command Prompt for VS 2022 with the Windows Driver Kit environment configured.
+2. Run build.bat. The script configures CMake under build\vs and compiles the user executable and driver library in Debug mode.
+3. To rebuild the driver target for Release, execute build_driver.bat after the initial configuration.
 
-### Search Types
-- `int32`, `uint32`, `float`
-- `ascii` – raw ASCII strings
-- `utf16` – UTF-16LE text
-- `hex` – byte patterns (accepts whitespace)
+> Note: Producing a loadable .sys requires the WDK toolset, driver signing certificates, and additional linker flags that will be incorporated as the kernel feature set matures.
 
-### Watch and Freeze
-- `watch add <indices>` – begin polling the selected hits. Changes are printed immediately.
-- `freeze add <indices> <value>` – force a value and automatically rewrite when the target mutates it.
-- `watch list`, `freeze list` – view active entries.
-- `watch clear`, `freeze clear` – stop monitoring/freeze loops.
-- `interval <ms>` – adjust the polling cadence (default 500 ms).
+## Current Status
+- User mode now exposes ProcessManager, PatternScanner, PointerResolver, ScanSession, ResultRefiner, ValueMonitor, and HookController scaffolding.
+- Kernel mode is partitioned into Memory, Scan, Pointer, Monitor, and Instrumentation handlers with IOCTL routing in place.
+- Shared protocol definitions enumerate future request and response payloads for memory regions, scans, pointer traces, monitors, and patch operations.
 
-## Running Tests
-```cmd
-python -m pytest
-```
-Coverage reports are emitted automatically because pytest-cov is configured in `pyproject.toml`.
-
-## Kernel Driver
-1. Open an **x64 Native Tools Command Prompt for VS 2022** with the Windows Driver Kit initialised.
-2. Run `build_driver.bat`. The signed binary lands in `driver\build\driver\MemoryPatcherDrv.sys`.
-3. Install the driver in test mode, for example:
-   ```cmd
-   sc create MemoryPatcherDrv type= kernel binPath= C:\path\to\MemoryPatcherDrv.sys
-   sc start MemoryPatcherDrv
-   ```
-4. Launch the console. When the driver is reachable (`\\.\MemoryPatcher`), reads and writes are issued through the bridge before falling back to Win32 APIs.
-
-> **Note**: The driver uses `MmCopyVirtualMemory` to copy between the caller and the target process. Administrative rights and test-signing mode are required during development.
-
-## Logging
-`memory_patcher.logging_config.configure_logging` creates `logs/memorypatcher.log`. Search, refine, read, write, watch, freeze, and driver fallback events are timestamped for auditing.
+## Next Implementation Steps
+1. Implement real scan pipelines (typed comparers, asynchronous chunking) and wire them into a CLI or ImGui interface.
+2. Flesh out kernel subsystems with guarded access checks, paging-aware traversals, and ETW logging.
+3. Define end-to-end IOCTL payloads for scan requests, pointer queries, and monitor streams; add validation, auditing, and throttling logic.
+4. Introduce native unit tests (user and driver) and scripted deployment helpers under tools/.
 
 ## Responsible Use
-MemoryPatcher is intended for controlled training and authorised research on systems you own or are explicitly permitted to analyse. Respect software licences, terms of service, and local laws.
+Operate the toolkit only on systems and processes you own or are explicitly authorised to inspect. Always follow platform security guidelines, licensing terms, and local legislation.
