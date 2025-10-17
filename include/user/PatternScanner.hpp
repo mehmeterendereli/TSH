@@ -1,11 +1,11 @@
 #pragma once
 
-#include <windows.h>
-
 #include <cstddef>
 #include <cstdint>
 #include <span>
 #include <vector>
+
+#include "user/MemoryAccessor.hpp"
 
 namespace tsh::user
 {
@@ -35,7 +35,7 @@ namespace tsh::user
     public:
         PatternScanner() = default;
 
-        std::vector<ScanHit> ExecuteInitialScan(HANDLE process, ScanDataType type, std::span<const std::byte> pattern, const std::vector<ScanRegion>& regions) const;
-        std::vector<ScanHit> RefineHits(HANDLE process, ScanDataType type, std::span<const std::byte> pattern, const std::vector<ScanHit>& existingHits) const;
+        std::vector<ScanHit> ExecuteInitialScan(const MemoryAccessor& accessor, ScanDataType type, std::span<const std::byte> pattern, const std::vector<ScanRegion>& regions) const;
+        std::vector<ScanHit> RefineHits(const MemoryAccessor& accessor, ScanDataType type, std::span<const std::byte> pattern, const std::vector<ScanHit>& existingHits) const;
     };
 } // namespace tsh::user

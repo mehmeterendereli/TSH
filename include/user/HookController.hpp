@@ -1,9 +1,9 @@
 #pragma once
 
-#include <windows.h>
-
 #include <cstdint>
 #include <vector>
+
+#include "user/MemoryAccessor.hpp"
 
 namespace tsh::user
 {
@@ -19,7 +19,7 @@ namespace tsh::user
     public:
         HookController() = default;
 
-        bool ApplyPatch(HANDLE process, PatchInstruction& instruction) const;
-        bool RevertPatch(HANDLE process, const PatchInstruction& instruction) const;
+        bool ApplyPatch(MemoryAccessor& accessor, PatchInstruction& instruction, std::uint32_t flags = 0) const;
+        bool RevertPatch(MemoryAccessor& accessor, const PatchInstruction& instruction, std::uint32_t flags = 0) const;
     };
 } // namespace tsh::user

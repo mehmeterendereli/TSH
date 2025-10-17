@@ -5,8 +5,10 @@ TSH Native Diagnostics is an educational Windows x64 memory introspection toolki
 ## Highlights
 - Pure native stack: Win32/ImGui-friendly user-mode front end and WDM-style kernel back end.
 - Protected driver channel: custom IOCTL protocol over DeviceIoControl, shared payload definitions, and rigorous validation.
+- Driver-mediated memory access: chunked scans, pointer tracing, monitor snapshots, and patch writes are serviced via kernel IOCTLs with secure fallbacks.
 - Memory tooling primitives: process enumeration, pattern scanning, result refinement, pointer chain scaffolding, and live value monitoring hooks.
 - Extensible instrumentation: hooks for optional self-process patching with reversible trampolines.
+- Optional Dear ImGui shell: launch `tsh_user.exe --imgui` (with `-DTSH_ENABLE_IMGUI=ON`) for a native renderer scaffold.
 - Auditable design: clear separation between privileged operations and UI logic, with space for ETW telemetry and logging.
 
 ## Repository Layout
@@ -28,6 +30,7 @@ TSH Native Diagnostics is an educational Windows x64 memory introspection toolki
 1. Open an x64 Native Tools Command Prompt for VS 2022 with the Windows Driver Kit environment configured.
 2. Run build.bat. The script configures CMake under build\vs and compiles the user executable and driver library in Debug mode.
 3. To rebuild the driver target for Release, execute build_driver.bat after the initial configuration.
+4. (Optional) Enable the ImGui shell with `cmake -DTSH_ENABLE_IMGUI=ON` and place the Dear ImGui sources under `external/imgui/`.
 
 > Note: Producing a loadable .sys requires the WDK toolset, driver signing certificates, and additional linker flags that will be incorporated as the kernel feature set matures.
 

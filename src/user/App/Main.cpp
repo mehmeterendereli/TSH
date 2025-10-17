@@ -1,10 +1,12 @@
 #include <windows.h>
+#include <shellapi.h>
 
 #include <cctype>
 #include <cstddef>
 #include <cstring>
 #include <cstdio>
 #include <cstdlib>
+#include <cwchar>
 #include <exception>
 #include <iomanip>
 #include <iostream>
@@ -13,14 +15,19 @@
 #include <sstream>
 #include <string>
 #include <string_view>
+#include <span>
 #include <vector>
 
 #include "shared/Protocol.hpp"
 #include "user/DriverChannel.hpp"
+#include "user/MemoryAccessor.hpp"
 #include "user/PatternScanner.hpp"
 #include "user/ProcessManager.hpp"
 #include "user/ResultRefiner.hpp"
 #include "user/ScanSession.hpp"
+#ifdef TSH_WITH_IMGUI
+#include "user/ui/ImGuiShell.hpp"
+#endif
 
 namespace tsh::app
 {
@@ -33,6 +40,7 @@ namespace tsh::app
             tsh::user::PatternScanner scanner;
             tsh::user::ResultRefiner  refiner;
             tsh::user::ScanSession    session;
+            tsh::user::MemoryAccessor accessor;
 
             bool                     driverAvailable{ false };
             std::uint32_t            attachedPid{ 0 };
@@ -224,10 +232,11 @@ namespace tsh::app
             return std::nullopt;
         }
 
-        std::vector<tsh::user::ScanRegion> FallbackQueryRegions(HANDLE processHandle)
+        std::vector<tsh::user::ScanRegion> FallbackQueryRegions(const tsh::user::MemoryAccessor& accessor)
         {
             std::vector<tsh::user::ScanRegion> regions;
 
+            HANDLE processHandle = accessor.ProcessHandle();
             if (!processHandle)
             {
                 return regions;
@@ -288,7 +297,7 @@ namespace tsh::app
                 std::cout << "[warn] Driver region query failed; falling back to Win32 enumeration.\n";
             }
 
-            regions = FallbackQueryRegions(context.processManager.ProcessHandle());
+            regions = FallbackQueryRegions(context.accessor);
             return regions;
         }
 
@@ -357,7 +366,6 @@ namespace tsh::app
             }
 
             const std::size_t count = std::min(limit, hits.size());
-            HANDLE processHandle = context.processManager.ProcessHandle();
             const auto type = context.session.Type();
             const auto pattern = context.session.Pattern();
 
@@ -371,10 +379,9 @@ namespace tsh::app
                 const auto address = hits[index].address;
                 std::cout << index << '\t' << "0x" << std::hex << std::uppercase << address << std::dec << '\t';
 
-                if (processHandle && !valueBuffer.empty())
+                if (context.accessor.IsBound() && !valueBuffer.empty())
                 {
-                    SIZE_T bytesRead = 0;
-                    if (::ReadProcessMemory(processHandle, reinterpret_cast<LPCVOID>(address), valueBuffer.data(), valueBuffer.size(), &bytesRead) && bytesRead == valueBuffer.size())
+                    if (context.accessor.Read(address, std::span<std::byte>(valueBuffer.data(), valueBuffer.size())))
                     {
                         switch (type)
                         {
@@ -450,6 +457,8 @@ namespace tsh::app
                 return false;
             }
 
+            context.accessor.Reset();
+
             if (!context.processManager.Attach(pid))
             {
                 std::cout << "[error] Unable to attach to PID " << pid << ".\n";
@@ -469,6 +478,8 @@ namespace tsh::app
                 }
             }
 
+            context.accessor.Bind(&context.driverChannel, context.processManager.ProcessHandle(), pid, context.driverAvailable);
+
             ResetSession(context, true);
             std::wcout << L"[info] Attached to PID " << pid << L" (" << (context.attachedName.empty() ? L"unknown" : context.attachedName.c_str()) << L")\n";
             return true;
@@ -476,7 +487,7 @@ namespace tsh::app
 
         void ExecuteScan(AppContext& context, tsh::user::ScanDataType type, const std::vector<std::byte>& pattern)
         {
-            if (context.attachedPid == 0 || !context.processManager.IsAttached())
+            if (context.attachedPid == 0 || !context.accessor.IsBound())
             {
                 std::cout << "[warn] Attach to a process first.\n";
                 return;
@@ -495,7 +506,11 @@ namespace tsh::app
                 return;
             }
 
-            auto hits = context.scanner.ExecuteInitialScan(context.processManager.ProcessHandle(), type, pattern, regions);
+            auto hits = context.scanner.ExecuteInitialScan(
+                context.accessor,
+                type,
+                std::span<const std::byte>(pattern.data(), pattern.size()),
+                regions);
 
             std::vector<std::byte> patternCopy(pattern.begin(), pattern.end());
             context.session.Begin(regions, type, std::move(patternCopy));
@@ -519,9 +534,9 @@ namespace tsh::app
             }
 
             auto refined = context.scanner.RefineHits(
-                context.processManager.ProcessHandle(),
+                context.accessor,
                 context.session.Type(),
-                pattern,
+                std::span<const std::byte>(pattern.data(), pattern.size()),
                 context.session.Results());
 
             context.session.UpdateResults(std::move(refined));
@@ -728,6 +743,42 @@ namespace tsh::app
 
 int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int)
 {
+#ifdef TSH_WITH_IMGUI
+    int argc = 0;
+    bool useImGui = false;
+    LPWSTR* argv = ::CommandLineToArgvW(::GetCommandLineW(), &argc);
+    if (argv != nullptr)
+    {
+        for (int i = 0; i < argc; ++i)
+        {
+            if (_wcsicmp(argv[i], L"--imgui") == 0 || _wcsicmp(argv[i], L"-imgui") == 0)
+            {
+                useImGui = true;
+                break;
+            }
+        }
+        ::LocalFree(argv);
+    }
+
+    if (useImGui)
+    {
+        try
+        {
+            return tsh::ui::RunImGuiShell();
+        }
+        catch (const std::exception& ex)
+        {
+            MessageBoxA(nullptr, ex.what(), "TSH - ImGui Error", MB_ICONERROR | MB_OK);
+            return EXIT_FAILURE;
+        }
+        catch (...)
+        {
+            MessageBoxA(nullptr, "Unknown ImGui failure.", "TSH - ImGui Error", MB_ICONERROR | MB_OK);
+            return EXIT_FAILURE;
+        }
+    }
+#endif
+
     try
     {
         tsh::app::InitializeConsole();

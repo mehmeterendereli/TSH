@@ -1,23 +1,23 @@
 #include "user/PointerResolver.hpp"
 
+#include <span>
+
 namespace tsh::user
 {
-    PointerPath PointerResolver::ResolvePointerChain(HANDLE process, std::uintptr_t baseAddress, const std::vector<std::intptr_t>& offsets) const
+    PointerPath PointerResolver::ResolvePointerChain(const MemoryAccessor& accessor, std::uintptr_t baseAddress, const std::vector<std::intptr_t>& offsets) const
     {
         PointerPath path;
-        if (!process || baseAddress == 0)
+        if (!accessor.IsBound() || baseAddress == 0)
         {
             return path;
         }
 
         std::uintptr_t currentAddress = baseAddress;
-
         for (std::intptr_t offset : offsets)
         {
             std::uintptr_t pointerValue = 0;
-            SIZE_T bytesRead = 0;
-            if (!::ReadProcessMemory(process, reinterpret_cast<LPCVOID>(currentAddress), &pointerValue, sizeof(pointerValue), &bytesRead) ||
-                bytesRead != sizeof(pointerValue))
+            auto buffer = std::span<std::byte>(reinterpret_cast<std::byte*>(&pointerValue), sizeof(pointerValue));
+            if (!accessor.Read(currentAddress, buffer))
             {
                 break;
             }
@@ -29,4 +29,3 @@ namespace tsh::user
         return path;
     }
 } // namespace tsh::user
-

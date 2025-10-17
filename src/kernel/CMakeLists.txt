@@ -1,5 +1,6 @@
 set(TSH_KERNEL_SOURCES
     DriverEntry.c
+    Common/DriverUtils.c
     Memory/MemoryOps.c
     Scan/PatternScan.c
     Pointer/PointerTrace.c

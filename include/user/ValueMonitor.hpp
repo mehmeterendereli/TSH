@@ -1,13 +1,13 @@
 #pragma once
 
-#include <windows.h>
-
 #include <atomic>
 #include <cstdint>
 #include <chrono>
 #include <functional>
 #include <thread>
 #include <vector>
+
+#include "user/MemoryAccessor.hpp"
 
 namespace tsh::user
 {
@@ -28,7 +28,7 @@ namespace tsh::user
         ValueMonitor(const ValueMonitor&) = delete;
         ValueMonitor& operator=(const ValueMonitor&) = delete;
 
-        void Configure(HANDLE process, std::vector<MonitorEntry> entries, MonitorCallback callback, std::chrono::milliseconds interval);
+        void Configure(const MemoryAccessor* accessor, std::vector<MonitorEntry> entries, MonitorCallback callback, std::chrono::milliseconds interval);
         void Start();
         void Stop();
 
@@ -37,11 +37,11 @@ namespace tsh::user
     private:
         void MonitorLoop();
 
-        HANDLE                        m_process{ nullptr };
-        std::vector<MonitorEntry>     m_entries;
-        MonitorCallback               m_callback;
-        std::chrono::milliseconds     m_interval{ 500 };
-        std::atomic<bool>             m_running{ false };
-        std::thread                   m_worker;
+        const MemoryAccessor*        m_accessor{ nullptr };
+        std::vector<MonitorEntry>    m_entries;
+        MonitorCallback              m_callback;
+        std::chrono::milliseconds    m_interval{ 500 };
+        std::atomic<bool>            m_running{ false };
+        std::thread                  m_worker;
     };
 } // namespace tsh::user

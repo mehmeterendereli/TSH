@@ -1,9 +1,9 @@
 #pragma once
 
-#include <windows.h>
-
 #include <cstdint>
 #include <vector>
+
+#include "user/MemoryAccessor.hpp"
 
 namespace tsh::user
 {
@@ -20,7 +20,6 @@ namespace tsh::user
     public:
         PointerResolver() = default;
 
-        PointerPath ResolvePointerChain(HANDLE process, std::uintptr_t baseAddress, const std::vector<std::intptr_t>& offsets) const;
+        PointerPath ResolvePointerChain(const MemoryAccessor& accessor, std::uintptr_t baseAddress, const std::vector<std::intptr_t>& offsets) const;
     };
 } // namespace tsh::user
-

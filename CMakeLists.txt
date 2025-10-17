@@ -13,6 +13,7 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+option(TSH_ENABLE_IMGUI "Enable Dear ImGui UI" OFF)
 option(TSH_ENABLE_TESTS "Build unit and integration tests" ON)
 
 add_subdirectory(src/user)

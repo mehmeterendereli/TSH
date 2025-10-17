@@ -9,11 +9,11 @@ namespace tsh::user
         Stop();
     }
 
-    void ValueMonitor::Configure(HANDLE process, std::vector<MonitorEntry> entries, MonitorCallback callback, std::chrono::milliseconds interval)
+    void ValueMonitor::Configure(const MemoryAccessor* accessor, std::vector<MonitorEntry> entries, MonitorCallback callback, std::chrono::milliseconds interval)
     {
         Stop();
 
-        m_process = process;
+        m_accessor = accessor;
         m_entries = std::move(entries);
         m_callback = std::move(callback);
         m_interval = interval;
@@ -21,7 +21,7 @@ namespace tsh::user
 
     void ValueMonitor::Start()
     {
-        if (IsActive() || m_process == nullptr || !m_callback || m_entries.empty())
+        if (IsActive() || m_accessor == nullptr || !m_accessor->IsBound() || !m_callback || m_entries.empty())
         {
             return;
         }
@@ -51,17 +51,18 @@ namespace tsh::user
             for (const auto& entry : m_entries)
             {
                 buffer.resize(entry.size);
+                if (entry.size == 0)
+                {
+                    continue;
+                }
 
-                SIZE_T bytesRead = 0;
-                if (::ReadProcessMemory(m_process, reinterpret_cast<LPCVOID>(entry.address), buffer.data(), buffer.size(), &bytesRead) &&
-                    bytesRead == buffer.size())
+                if (m_accessor != nullptr && m_accessor->Read(entry.address, std::span<std::byte>(buffer.data(), buffer.size())))
                 {
                     m_callback(entry, buffer);
                 }
             }
 
-            ::Sleep(static_cast<DWORD>(m_interval.count()));
+            std::this_thread::sleep_for(m_interval);
         }
     }
 } // namespace tsh::user
-

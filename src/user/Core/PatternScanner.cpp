@@ -10,21 +10,9 @@ namespace tsh::user
     {
         constexpr std::size_t kDefaultChunkSize = 64 * 1024;
 
-        bool MemoryReadExact(HANDLE process, std::uintptr_t address, void* buffer, std::size_t size)
+        bool MemoryReadExact(const MemoryAccessor& accessor, std::uintptr_t address, std::span<std::byte> buffer)
         {
-            if (size == 0)
-            {
-                return true;
-            }
-
-            SIZE_T bytesRead = 0;
-            return ::ReadProcessMemory(
-                       process,
-                       reinterpret_cast<LPCVOID>(address),
-                       buffer,
-                       size,
-                       &bytesRead) &&
-                   bytesRead == size;
+            return accessor.Read(address, buffer);
         }
 
         void AppendMatchesForWindow(
@@ -51,14 +39,14 @@ namespace tsh::user
     } // namespace
 
     std::vector<ScanHit> PatternScanner::ExecuteInitialScan(
-        HANDLE process,
+        const MemoryAccessor& accessor,
         ScanDataType type,
         std::span<const std::byte> pattern,
         const std::vector<ScanRegion>& regions) const
     {
         std::vector<ScanHit> hits;
 
-        if (!process || pattern.empty())
+        if (!accessor.IsBound() || pattern.empty())
         {
             return hits;
         }
@@ -85,21 +73,14 @@ namespace tsh::user
             while (regionOffset < region.size)
             {
                 const std::size_t toRead = std::min(kDefaultChunkSize, region.size - regionOffset);
-                SIZE_T bytesRead = 0;
-                if (!::ReadProcessMemory(
-                        process,
-                        reinterpret_cast<LPCVOID>(regionAddress + regionOffset),
-                        chunkBuffer.data(),
-                        toRead,
-                        &bytesRead) ||
-                    bytesRead == 0)
+                if (!accessor.Read(regionAddress + regionOffset, std::span<std::byte>(chunkBuffer.data(), toRead)))
                 {
                     regionOffset += toRead;
                     tailLength = 0;
                     continue;
                 }
 
-                const std::size_t validBytes = static_cast<std::size_t>(bytesRead);
+                const std::size_t validBytes = toRead;
                 windowBuffer.clear();
 
                 const std::size_t prefix = std::min(tailLength, regionOffset);
@@ -137,14 +118,14 @@ namespace tsh::user
     }
 
     std::vector<ScanHit> PatternScanner::RefineHits(
-        HANDLE process,
+        const MemoryAccessor& accessor,
         ScanDataType type,
         std::span<const std::byte> pattern,
         const std::vector<ScanHit>& existingHits) const
     {
         std::vector<ScanHit> refined;
 
-        if (!process || pattern.empty())
+        if (!accessor.IsBound() || pattern.empty())
         {
             return refined;
         }
@@ -153,7 +134,7 @@ namespace tsh::user
 
         for (const auto& hit : existingHits)
         {
-            if (MemoryReadExact(process, hit.address, buffer.data(), buffer.size()) &&
+            if (MemoryReadExact(accessor, hit.address, std::span<std::byte>(buffer.data(), buffer.size())) &&
                 std::memcmp(buffer.data(), pattern.data(), pattern.size()) == 0)
             {
                 refined.push_back(hit);

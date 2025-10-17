@@ -13,6 +13,7 @@ NTSTATUS TshHandlePatternScan(PIRP irp, PIO_STACK_LOCATION stack, PULONG_PTR inf
 NTSTATUS TshHandlePointerTrace(PIRP irp, PIO_STACK_LOCATION stack, PULONG_PTR information);
 NTSTATUS TshHandleMonitorRequest(PIRP irp, PIO_STACK_LOCATION stack, PULONG_PTR information);
 NTSTATUS TshHandlePatchRequest(PIRP irp, PIO_STACK_LOCATION stack, PULONG_PTR information);
+NTSTATUS TshHandleReadMemory(PIRP irp, PIO_STACK_LOCATION stack, PULONG_PTR information);
 
 VOID TshMemorySubsystemInitialize();
 VOID TshMemorySubsystemShutdown();
@@ -20,4 +21,3 @@ VOID TshMemorySubsystemShutdown();
 #ifdef __cplusplus
 }
 #endif
-

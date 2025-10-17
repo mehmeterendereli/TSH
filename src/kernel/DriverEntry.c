@@ -107,6 +107,9 @@ NTSTATUS TshDispatchDeviceControl(PDEVICE_OBJECT deviceObject, PIRP irp)
         case IOCTL_TSH_POINTER_TRACE:
             status = TshHandlePointerTrace(irp, stack, &information);
             break;
+        case IOCTL_TSH_READ_MEMORY:
+            status = TshHandleReadMemory(irp, stack, &information);
+            break;
         case IOCTL_TSH_MONITOR_CONTROL:
             status = TshHandleMonitorRequest(irp, stack, &information);
             break;
