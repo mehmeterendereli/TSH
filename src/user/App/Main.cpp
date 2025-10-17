@@ -27,6 +27,9 @@
 #include "user/ResultRefiner.hpp"
 #include "user/ScanSession.hpp"
 #include "user/ValueMonitor.hpp"
+#ifdef TSH_ENABLE_RESEARCH_LOADER
+#include "user/ResearchLoader.hpp"
+#endif
 #ifdef TSH_WITH_IMGUI
 #include "user/ui/ImGuiShell.hpp"
 #endif
@@ -1030,6 +1033,21 @@ namespace tsh::app
         AppContext context;
 
         context.driverAvailable = context.driverChannel.Open();
+#ifdef TSH_ENABLE_RESEARCH_LOADER
+        if (!context.driverAvailable)
+        {
+            std::cout << "[driver] channel unavailable. Research loader strategies are being attempted...\n";
+            if (tsh::user::ResearchLoader::EnsureDriverLoaded())
+            {
+                std::cout << "[driver] Research loader reported success; reopening device handle...\n";
+                context.driverAvailable = context.driverChannel.Open();
+            }
+            else
+            {
+                std::cout << "[driver] Research loader strategies could not start the driver.\n";
+            }
+        }
+#endif
         if (context.driverAvailable)
         {
             std::uint32_t response = 0;
@@ -1045,6 +1063,7 @@ namespace tsh::app
         else
         {
             std::cout << "[driver] unavailable. Falling back to Win32 APIs where possible.\n";
+            std::cout << "[driver] Kernel-backed IOCTLs remain disabled; reads and writes will use Win32 fallbacks.\n";
         }
 
         PrintBanner();

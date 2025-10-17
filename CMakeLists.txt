@@ -15,6 +15,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 option(TSH_ENABLE_IMGUI "Enable Dear ImGui UI" OFF)
 option(TSH_ENABLE_TESTS "Build unit and integration tests" ON)
+option(TSH_ENABLE_RESEARCH_LOADER "Enable research driver loader" OFF)
 
 add_subdirectory(src/user)
 add_subdirectory(src/kernel)

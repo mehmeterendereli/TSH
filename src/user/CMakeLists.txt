@@ -43,3 +43,8 @@ if (TSH_ENABLE_IMGUI)
         PRIVATE
             ${CMAKE_SOURCE_DIR}/external/imgui)
 endif()
+
+if (TSH_ENABLE_RESEARCH_LOADER)
+    target_sources(TSH.User PRIVATE ResearchLoader.cpp)
+    target_compile_definitions(TSH.User PRIVATE TSH_ENABLE_RESEARCH_LOADER)
+endif()
