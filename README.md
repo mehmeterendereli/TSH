@@ -1,79 +1,73 @@
 # MemoryPatcher
 
-MemoryPatcher is a Windows x64 training utility for exploring live process memory in a controlled way. Attach to a target, scan for integers or strings, refine the hit list as a value changes, and monitor or freeze individual addresses with millisecond resolution. A paired kernel-mode driver keeps privileged operations reliable and quiet, while every action is logged.
+MemoryPatcher is a Windows 10/11 x64 training utility written in Python. Attach to a target process, locate interesting values with full memory scans, refine the hit list as values change, and keep a real time watch or freeze running on selected addresses. An optional kernel-mode driver is included for privileged read/write operations when user mode APIs are blocked.
 
-## Key Capabilities
+## Highlights
+- **Command driven console** – `attach`, `search`, `refine`, `read`, `write`, `watch`, and `freeze` are one-liners.
+- **Value refinement** – repeat the last search against the current hit list to isolate dynamic values quickly.
+- **Live watch & freeze** – poll addresses at millisecond cadence, print changes, or automatically restore a frozen value.
+- **Driver aware** – when `MemoryPatcherDrv.sys` is present, the console routes reads/writes through the kernel bridge and falls back to Win32 APIs if anything fails.
+- **Structured logging** – every operation is logged under `logs/memorypatcher.log` for later review.
+- **Test covered** – unit and integration tests exercise the scanner core, watch manager, and console flow (`python -m pytest`).
 
-- **Interactive console workflow** – attach, search, refine, read, write, watch, and freeze from short commands (`search`, `refine`, `watch add`, …).
-- **Value refine / next scan** – re-run the last search against hits only, tightening in on dynamic values in seconds.
-- **Live watch + freeze** – track selected addresses in real time or pin them to a fixed value with automatic re-write.
-- **Kernel assisted access** – optional `MemoryPatcherDrv.sys` driver (source included) performs reads, writes, and protection changes beyond user-mode limitations.
-- **Stealth helpers** – direct syscall path, anti-debug monitoring, and configurable timing scatter keep actions harder to trace.
-- **Comprehensive logging** – all searches, reads, writes, freezes, and driver activity are recorded under `logs/` for later review.
+## Repository Layout
+- `memory_patcher/` – user-mode library (access layer, scanner, console, watch manager, driver bridge).
+- `scripts/run_console.py` – convenience launcher for the interactive console.
+- `tests/` – pytest suite covering encoding, scanning, watch/freeze loops, and the CLI workflow.
+- `driver/` – kernel driver sources (`MemoryPatcherDrv.c`, `MemoryPatcherIoctl.h`, Visual Studio project).
+- `build.bat` – bootstrap virtual environment installation and run the full test suite.
+- `build_driver.bat` – invoke MSBuild to compile the kernel driver (requires the WDK command prompt).
 
-## Build Instructions
-
-1. **User-mode console**
-   ```cmd
-   build.bat
-   ```
-   Produces `build\MemoryPatcher.exe` using the latest Visual Studio Build Tools located via `vswhere`.
-
-2. **Kernel driver (optional but recommended)**
-   ```cmd
-   build_driver.bat
-   ```
-   Run from the "x64 Native Tools Command Prompt for VS 2022" with the Windows Driver Kit (WDK) environment initialised. The script emits `build\driver\MemoryPatcherDrv.sys`.
-
-Copy both the executable and driver into the same directory when deploying (the loader expects `MemoryPatcherDrv.sys` next to the console binary).
-
-## Running the Console
-
+## Quick Start
 ```cmd
-MemoryPatcher.exe
+python -m pip install -e .[dev]
+python scripts\run_console.py
 ```
+At the `mp>` prompt use commands such as:
+```
+attach 1234
+search int32 1500
+results 10
+watch add 1,2
+freeze add 1 9999
+interval 100
+status
+```
+Type `help` or `?` to see all commands. `exit` or `Ctrl+Z` leaves the console.
 
-At start-up the tool prints the banner and the full command list. Enter commands at the `mp>` prompt:
+### Search Types
+- `int32`, `uint32`, `float`
+- `ascii` – raw ASCII strings
+- `utf16` – UTF-16LE text
+- `hex` – byte patterns (accepts whitespace)
 
-| Command | Purpose |
-|---------|---------|
-| `attach [pid]` | Attach via list or PID. |
-| `search <i|ascii|utf16> <value>` | Full memory scan. |
-| `refine <value>` | Re-filter previous hits with a new value (next scan). |
-| `results [count]` | Show latest matches. |
-| `read <indices|*>` | Refresh hit values. |
-| `write <indices|*> <value>` | Patch one or many hits. |
-| `watch add/remove/list/clear …` | Manage live watch list (values printed on change). |
-| `freeze add/remove/list/clear …` | Pin addresses to a value (auto rewrite on change). |
-| `interval <ms>` | Set watch/freeze polling cadence (default 500 ms). |
-| `settings <stealth|antidebug|terminate> <on/off>` | Adjust stealth subsystems. |
-| `status` | Summaries for attachment, result count, watch/freeze totals. |
-| `help` | Show the full command reference. |
-| `exit` | Leave the console. |
+### Watch and Freeze
+- `watch add <indices>` – begin polling the selected hits. Changes are printed immediately.
+- `freeze add <indices> <value>` – force a value and automatically rewrite when the target mutates it.
+- `watch list`, `freeze list` – view active entries.
+- `watch clear`, `freeze clear` – stop monitoring/freeze loops.
+- `interval <ms>` – adjust the polling cadence (default 500 ms).
 
-### Watching and Freezing
+## Running Tests
+```cmd
+python -m pytest
+```
+Coverage reports are emitted automatically because pytest-cov is configured in `pyproject.toml`.
 
-- **watch add 1,2** – refreshes the selected hits on every polling tick and prints when a value changes.
-- **freeze add 3 9999** – writes the value immediately and re-applies it whenever the target overwrites memory.
-- Watches and freezes are independent; both can run side-by-side. Use `interval` to increase the sampling rate when needed.
+## Kernel Driver
+1. Open an **x64 Native Tools Command Prompt for VS 2022** with the Windows Driver Kit initialised.
+2. Run `build_driver.bat`. The signed binary lands in `driver\build\driver\MemoryPatcherDrv.sys`.
+3. Install the driver in test mode, for example:
+   ```cmd
+   sc create MemoryPatcherDrv type= kernel binPath= C:\path\to\MemoryPatcherDrv.sys
+   sc start MemoryPatcherDrv
+   ```
+4. Launch the console. When the driver is reachable (`\\.\MemoryPatcher`), reads and writes are issued through the bridge before falling back to Win32 APIs.
 
-## Kernel Driver Integration
-
-- The user-mode binary tries to load `MemoryPatcherDrv.sys` automatically on the first privileged operation. Installation requires administrative rights.
-- If the driver is absent or cannot be loaded, MemoryPatcher falls back to direct syscalls and Win32 APIs (with reduced access on protected pages).
-- The driver exposes IOCTLs for reading, writing, and adjusting protection using `MmCopyVirtualMemory`, keeping the user-mode footprint small.
+> **Note**: The driver uses `MmCopyVirtualMemory` to copy between the caller and the target process. Administrative rights and test-signing mode are required during development.
 
 ## Logging
-
-Every session creates a UTC timestamped log file under `logs/`. Searches, refines, reads, writes, watch updates, freeze rewrites, settings changes, and driver load events are recorded for auditing.
-
-## Requirements
-
-- Windows 10 / 11 x64.
-- Visual Studio 2022 Build Tools (for `build.bat`).
-- Windows Driver Kit 10 (for `build_driver.bat`).
-- Administrator rights recommended for driver installation and SE_DEBUG privilege escalation.
+`memory_patcher.logging_config.configure_logging` creates `logs/memorypatcher.log`. Search, refine, read, write, watch, freeze, and driver fallback events are timestamped for auditing.
 
 ## Responsible Use
-
-MemoryPatcher is provided for educational analysis on systems and software you are authorised to inspect. Respect licences, terms of service, and local legislation at all times.
+MemoryPatcher is intended for controlled training and authorised research on systems you own or are explicitly permitted to analyse. Respect software licences, terms of service, and local laws.

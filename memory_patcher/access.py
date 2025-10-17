@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import ctypes
+import logging
 import threading
 from dataclasses import dataclass
-from typing import Iterable, Iterator, Optional, Protocol
+from typing import TYPE_CHECKING, Iterable, Iterator, Optional, Protocol
 
 try:  # pragma: no cover - runtime guard for non-Windows systems
     from ctypes import wintypes
@@ -82,7 +83,7 @@ class WindowsMemoryAccessor:
     PAGE_GUARD = 0x100
     PAGE_NOACCESS = 0x01
 
-    def __init__(self, pid: int, *, handle: Optional[int] = None):
+    def __init__(self, pid: int, *, handle: Optional[int] = None, driver: Optional["KernelDriverBridge"] = None):
         if wintypes is None:  # pragma: no cover - caught in tests
             raise RuntimeError("Windows APIs are not available on this platform")
 
@@ -90,6 +91,7 @@ class WindowsMemoryAccessor:
         self._kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
         self._handle = handle or self._open_process(pid)
         self._lock = threading.RLock()
+        self._driver = driver
         self._configure_prototypes()
 
     # Windows API bootstrapping -------------------------------------------------
@@ -209,8 +211,20 @@ class WindowsMemoryAccessor:
                 break
 
     def read(self, address: int, size: int) -> bytes:
-        buffer = bytearray()
-        offset = 0
+        if self._driver:
+            try:
+                data = self._driver.read(self.pid, address, size)
+                if len(data) == size:
+                    return data
+                buffer = bytearray(data)
+                offset = len(buffer)
+            except OSError as exc:
+                LOGGER.debug("Driver read failed, falling back: %s", exc)
+                buffer = bytearray()
+                offset = 0
+        else:
+            buffer = bytearray()
+            offset = 0
         while offset < size:
             request = min(size - offset, 0x4000)
             chunk_buffer = (ctypes.c_ubyte * request)()
@@ -233,6 +247,12 @@ class WindowsMemoryAccessor:
         return bytes(buffer)
 
     def write(self, address: int, data: bytes) -> None:
+        if self._driver:
+            try:
+                self._driver.write(self.pid, address, data)
+                return
+            except OSError as exc:
+                LOGGER.debug("Driver write failed, falling back: %s", exc)
         written = ctypes.c_size_t(0)
         buffer = ctypes.create_string_buffer(data)
         ok = self._kernel32.WriteProcessMemory(
@@ -294,3 +314,7 @@ __all__ = [
     "WindowsMemoryAccessor",
     "LocalMemoryAccessor",
 ]
+LOGGER = logging.getLogger(__name__)
+
+if TYPE_CHECKING:
+    from .driver_bridge import KernelDriverBridge
