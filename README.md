@@ -20,6 +20,7 @@ TSH Native Diagnostics is an educational Windows x64 memory introspection toolki
 - shared/ - IOCTL codes, protocol structs, and cross-layer helpers.
 - user/ - user-mode interfaces (driver channel, process manager, scanners, monitors, instrumentation helpers).
 - kernel/ - driver-side helper declarations for IOCTL dispatchers.
+- docs/usage-guide.md - detailed CLI/ImGui walkthrough (Notepad `mehmet` example).
 - src/user/ - Win32 entry point, communications layer, and native engine modules (Core/, Analysis/, Monitoring/, Instrumentation/).
 - src/kernel/ - WDM driver skeleton plus modular subsystems (Memory/, Scan/, Pointer/, Monitor/, Instrumentation/).
 - tests/ - placeholder CMake target for future unit and integration suites.
