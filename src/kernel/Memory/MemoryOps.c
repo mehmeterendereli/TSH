@@ -1,10 +1,8 @@
 #include <ntifs.h>
 
-#define _KERNEL_MODE
 #include "shared/DriverIoctl.h"
 #include "kernel/DriverOperations.h"
 #include "kernel/DriverUtils.h"
-#undef _KERNEL_MODE
 
 static BOOLEAN TshHasAccessForProcess(PIRP irp, ULONG processId)
 {

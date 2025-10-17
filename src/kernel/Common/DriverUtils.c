@@ -1,8 +1,7 @@
 #include <ntifs.h>
 
-#define _KERNEL_MODE
+
 #include "kernel/DriverUtils.h"
-#undef _KERNEL_MODE
 
 static NTSTATUS TshLookupProcessById(_In_ ULONG processId, _Outptr_ PEPROCESS* processObject)
 {
@@ -76,7 +75,7 @@ BOOLEAN TshCallerOwnsProcess(
     _In_ PIRP irp,
     _In_ ULONG targetProcessId)
 {
-    const ULONG callerPid = HandleToULong(IoGetRequestorProcessId(irp));
+    const ULONG callerPid = (ULONG)(ULONG_PTR)IoGetRequestorProcessId(irp);
     return callerPid == targetProcessId;
 }
 

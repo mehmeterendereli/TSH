@@ -1,20 +1,7 @@
-find_path(WDK_INCLUDE_DIR
-    NAMES ntddk.h
-    HINTS
-        "$ENV{WDK_DIR}/Include"
-        "C:/Program Files (x86)/Windows Kits/10/Include"
-        "C:/Program Files/Windows Kits/10/Include"
-    PATH_SUFFIXES
-        km
-        km/shared
-        km/crt
-        km/ddk
-)
-
-if (NOT WDK_INCLUDE_DIR)
-    message(WARNING "Windows Driver Kit headers not located, skipping kernel driver build.")
-    return()
-endif()
+# Manual WDK override (ensure these paths exist locally)
+set(WDK_INCLUDE_DIR "C:/Program Files (x86)/Windows Kits/10/Include/10.0.26100.0/km" CACHE PATH "WDK include root" FORCE)
+set(WDK_LIB_DIR     "C:/Program Files (x86)/Windows Kits/10/Lib/10.0.26100.0/km/x64" CACHE PATH "WDK library root" FORCE)
+set(WDK_FOUND TRUE CACHE BOOL "WDK present flag" FORCE)
 
 set(TSH_KERNEL_SOURCES
     DriverEntry.c
@@ -26,7 +13,7 @@ set(TSH_KERNEL_SOURCES
     Instrumentation/HookEngine.c
 )
 
-add_library(TSH.Driver STATIC ${TSH_KERNEL_SOURCES})
+add_library(TSH.Driver SHARED ${TSH_KERNEL_SOURCES})
 
 target_include_directories(TSH.Driver
     PRIVATE
@@ -36,8 +23,14 @@ target_include_directories(TSH.Driver
 
 target_compile_definitions(TSH.Driver
     PRIVATE
-        _KERNEL_MODE
+        TSH_KERNEL_BUILD
         NOMINMAX
+        _AMD64_
+        AMD64
+        WIN64
+        NTDDI_VERSION=0x0A00000B
+        _WIN32_WINNT=0x0A00
+        VER_PRODUCTBUILD=19041
 )
 
 if (MSVC)
@@ -47,17 +40,36 @@ if (MSVC)
             /Zl
             /Zp8
             /Gs
+            /GS-
+
+            /sdl-
+    )
+
+    target_link_directories(TSH.Driver PRIVATE "${WDK_LIB_DIR}")
+
+    target_link_libraries(TSH.Driver
+        PRIVATE
+            ntoskrnl.lib
+            hal.lib
+            ksecdd.lib
+            BufferOverflowK.lib
+)
+
+    target_link_options(TSH.Driver
+        PRIVATE
+            /NODEFAULTLIB
+            /SUBSYSTEM:NATIVE
+            /DRIVER
+            /ENTRY:DriverEntry
+            /MANIFEST:NO
     )
 endif()
 
 set_target_properties(TSH.Driver PROPERTIES
     OUTPUT_NAME "tsh_driver"
+    SUFFIX ".sys"
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/driver"
+    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/driver"
     ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/driver"
+    LINKER_LANGUAGE C
 )
-
-add_custom_target(TSH.DriverPackage ALL
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        $<TARGET_FILE:TSH.Driver>
-        ${CMAKE_BINARY_DIR}/dist/tsh_driver.lib
-    DEPENDS TSH.Driver
-    COMMENT "Preparing placeholder driver package artifact")

@@ -1,10 +1,8 @@
 #include <ntifs.h>
 
-#define _KERNEL_MODE
 #include "shared/DriverIoctl.h"
 #include "kernel/DriverOperations.h"
 #include "kernel/DriverUtils.h"
-#undef _KERNEL_MODE
 
 NTSTATUS TshHandleMonitorRequest(PIRP irp, PIO_STACK_LOCATION stack, PULONG_PTR information)
 {
@@ -26,7 +24,7 @@ NTSTATUS TshHandleMonitorRequest(PIRP irp, PIO_STACK_LOCATION stack, PULONG_PTR 
     const TSH_MONITOR_REQUEST* request = (const TSH_MONITOR_REQUEST*)irp->AssociatedIrp.SystemBuffer;
     const SIZE_T remaining = stack->Parameters.DeviceIoControl.InputBufferLength - sizeof(TSH_MONITOR_REQUEST);
     const SIZE_T availableEntries = remaining / sizeof(TSH_MONITOR_ENTRY);
-    const ULONG requestedEntries = min(request->EntryCount, (ULONG)availableEntries);
+    const ULONG requestedEntries = TSH_MIN(request->EntryCount, (ULONG)availableEntries);
 
     if (requestedEntries == 0)
     {
@@ -57,12 +55,12 @@ NTSTATUS TshHandleMonitorRequest(PIRP irp, PIO_STACK_LOCATION stack, PULONG_PTR 
     const TSH_MONITOR_ENTRY* entries = (const TSH_MONITOR_ENTRY*)(request + 1);
     PTSH_MONITOR_SAMPLE samples = (PTSH_MONITOR_SAMPLE)irp->AssociatedIrp.SystemBuffer;
 
-    RtlZeroMemory(samples, min((SIZE_T)requestedEntries, capacity) * sizeof(TSH_MONITOR_SAMPLE));
+    const SIZE_T maxSamples = (SIZE_T)TSH_MIN(requestedEntries, (ULONG)capacity);
+    RtlZeroMemory(samples, maxSamples * sizeof(TSH_MONITOR_SAMPLE));
 
-    const ULONG count = (ULONG)min((SIZE_T)requestedEntries, capacity);
     NTSTATUS finalStatus = STATUS_SUCCESS;
 
-    for (ULONG index = 0; index < count; ++index)
+    for (SIZE_T index = 0; index < maxSamples; ++index)
     {
         const TSH_MONITOR_ENTRY* entry = &entries[index];
         PTSH_MONITOR_SAMPLE sample = &samples[index];
@@ -72,7 +70,7 @@ NTSTATUS TshHandleMonitorRequest(PIRP irp, PIO_STACK_LOCATION stack, PULONG_PTR 
         sample->CapturedSize = 0;
         sample->Status = STATUS_INVALID_PARAMETER;
 
-        const SIZE_T copySize = min((SIZE_T)entry->Size, (SIZE_T)TSH_MONITOR_SAMPLE_MAX_BYTES);
+        const SIZE_T copySize = TSH_MIN((SIZE_T)entry->Size, (SIZE_T)TSH_MONITOR_SAMPLE_MAX_BYTES);
         if (copySize == 0)
         {
             continue;
@@ -96,7 +94,7 @@ NTSTATUS TshHandleMonitorRequest(PIRP irp, PIO_STACK_LOCATION stack, PULONG_PTR 
 
     if (information)
     {
-        *information = count * sizeof(TSH_MONITOR_SAMPLE);
+        *information = maxSamples * sizeof(TSH_MONITOR_SAMPLE);
     }
 
     TshCloseTargetProcess(processObject, processHandle);

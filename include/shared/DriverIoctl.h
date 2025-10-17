@@ -1,12 +1,14 @@
 
 #pragma once
 
-#include <winioctl.h>
-#include "shared/Protocol.h"
-
-#ifdef _KERNEL_MODE
+#ifdef TSH_KERNEL_BUILD
 #include <ntddk.h>
+#else
+#include <Windows.h>
+#include <winioctl.h>
 #endif
+
+#include "shared/Protocol.h"
 
 //
 // IOCTL interface shared between user-mode client and kernel driver.

@@ -11,17 +11,20 @@ typedef struct _TSH_PING_REQUEST
 {
     uint32_t Token;
 } TSH_PING_REQUEST;
+typedef TSH_PING_REQUEST* PTSH_PING_REQUEST;
 
 typedef struct _TSH_PING_RESPONSE
 {
     uint32_t Value;
 } TSH_PING_RESPONSE;
+typedef TSH_PING_RESPONSE* PTSH_PING_RESPONSE;
 
 typedef struct _TSH_REGION_QUERY_REQUEST
 {
     uint32_t ProcessId;
     uint32_t Flags;
 } TSH_REGION_QUERY_REQUEST;
+typedef TSH_REGION_QUERY_REQUEST* PTSH_REGION_QUERY_REQUEST;
 
 typedef struct _TSH_MEMORY_REGION
 {
@@ -32,6 +35,7 @@ typedef struct _TSH_MEMORY_REGION
     uint32_t Type;
     uint32_t Reserved;
 } TSH_MEMORY_REGION;
+typedef TSH_MEMORY_REGION* PTSH_MEMORY_REGION;
 
 typedef struct _TSH_SCAN_REQUEST
 {
@@ -41,6 +45,7 @@ typedef struct _TSH_SCAN_REQUEST
     uint32_t CompareValueSize;
     uint32_t Flags;
 } TSH_SCAN_REQUEST;
+typedef TSH_SCAN_REQUEST* PTSH_SCAN_REQUEST;
 
 typedef struct _TSH_POINTER_TRACE_REQUEST
 {
@@ -48,6 +53,7 @@ typedef struct _TSH_POINTER_TRACE_REQUEST
     uint32_t MaxDepth;
     uint64_t BaseAddress;
 } TSH_POINTER_TRACE_REQUEST;
+typedef TSH_POINTER_TRACE_REQUEST* PTSH_POINTER_TRACE_REQUEST;
 
 typedef struct _TSH_MONITOR_REQUEST
 {
@@ -56,6 +62,7 @@ typedef struct _TSH_MONITOR_REQUEST
     uint32_t PollingIntervalMs;
     uint32_t Flags;
 } TSH_MONITOR_REQUEST;
+typedef TSH_MONITOR_REQUEST* PTSH_MONITOR_REQUEST;
 
 typedef struct _TSH_PATCH_REQUEST
 {
@@ -65,6 +72,7 @@ typedef struct _TSH_PATCH_REQUEST
     uint32_t PayloadSize;
     uint32_t Reserved;
 } TSH_PATCH_REQUEST;
+typedef TSH_PATCH_REQUEST* PTSH_PATCH_REQUEST;
 
 typedef struct _TSH_READ_MEMORY_REQUEST
 {
@@ -74,12 +82,14 @@ typedef struct _TSH_READ_MEMORY_REQUEST
     uint32_t Size;
     uint32_t Reserved;
 } TSH_READ_MEMORY_REQUEST;
+typedef TSH_READ_MEMORY_REQUEST* PTSH_READ_MEMORY_REQUEST;
 
 typedef struct _TSH_POINTER_TRACE_NODE
 {
     uint64_t Address;
     uint64_t Value;
 } TSH_POINTER_TRACE_NODE;
+typedef TSH_POINTER_TRACE_NODE* PTSH_POINTER_TRACE_NODE;
 
 typedef struct _TSH_MONITOR_ENTRY
 {
@@ -87,6 +97,7 @@ typedef struct _TSH_MONITOR_ENTRY
     uint32_t Size;
     uint32_t Reserved;
 } TSH_MONITOR_ENTRY;
+typedef TSH_MONITOR_ENTRY* PTSH_MONITOR_ENTRY;
 
 #define TSH_MONITOR_SAMPLE_MAX_BYTES 64u
 
@@ -99,9 +110,11 @@ typedef struct _TSH_MONITOR_SAMPLE
     uint32_t Reserved;
     uint8_t  Data[TSH_MONITOR_SAMPLE_MAX_BYTES];
 } TSH_MONITOR_SAMPLE;
+typedef TSH_MONITOR_SAMPLE* PTSH_MONITOR_SAMPLE;
 
 typedef struct _TSH_PATCH_RESPONSE
 {
     uint32_t BytesWritten;
     uint32_t Status;
 } TSH_PATCH_RESPONSE;
+typedef TSH_PATCH_RESPONSE* PTSH_PATCH_RESPONSE;

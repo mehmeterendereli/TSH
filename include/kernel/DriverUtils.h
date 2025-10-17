@@ -1,6 +1,26 @@
 #pragma once
 
 #include <ntifs.h>
+#ifndef PROCESS_QUERY_INFORMATION
+#define PROCESS_QUERY_INFORMATION            0x0400
+#endif
+#ifndef PROCESS_VM_READ
+#define PROCESS_VM_READ                      0x0010
+#endif
+#ifndef PROCESS_VM_WRITE
+#define PROCESS_VM_WRITE                     0x0020
+#endif
+#ifndef TSH_MIN
+#define TSH_MIN(a,b) (( (a) < (b) ) ? (a) : (b))
+#endif
+
+#ifndef PROCESS_VM_OPERATION
+#define PROCESS_VM_OPERATION                 0x0008
+#endif
+#ifndef PROCESS_QUERY_LIMITED_INFORMATION
+#define PROCESS_QUERY_LIMITED_INFORMATION    0x1000
+#endif
+
 
 #ifdef __cplusplus
 extern "C" {

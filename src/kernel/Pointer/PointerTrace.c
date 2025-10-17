@@ -1,10 +1,8 @@
 #include <ntifs.h>
 
-#define _KERNEL_MODE
 #include "shared/DriverIoctl.h"
 #include "kernel/DriverOperations.h"
 #include "kernel/DriverUtils.h"
-#undef _KERNEL_MODE
 
 NTSTATUS TshHandlePointerTrace(PIRP irp, PIO_STACK_LOCATION stack, PULONG_PTR information)
 {
@@ -35,7 +33,7 @@ NTSTATUS TshHandlePointerTrace(PIRP irp, PIO_STACK_LOCATION stack, PULONG_PTR in
     const SIZE_T offsetCount = inputRemainder / sizeof(LONGLONG);
     const ULONG requestedDepth = (request->MaxDepth == 0)
         ? (ULONG)offsetCount
-        : min(request->MaxDepth, (ULONG)offsetCount);
+        : TSH_MIN(request->MaxDepth, (ULONG)offsetCount);
 
     if (requestedDepth == 0)
     {

@@ -1,10 +1,8 @@
 #include <ntifs.h>
 
-#define _KERNEL_MODE
 #include "shared/DriverIoctl.h"
 #include "kernel/DriverOperations.h"
 #include "kernel/DriverUtils.h"
-#undef _KERNEL_MODE
 
 NTSTATUS TshHandlePatchRequest(PIRP irp, PIO_STACK_LOCATION stack, PULONG_PTR information)
 {
@@ -53,7 +51,7 @@ NTSTATUS TshHandlePatchRequest(PIRP irp, PIO_STACK_LOCATION stack, PULONG_PTR in
         return status;
     }
 
-    const PVOID payload = (const UCHAR*)(request + 1);
+    PVOID payload = (PVOID)(request + 1);
 
     status = TshCopyToProcess(
         processObject,

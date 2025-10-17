@@ -1,10 +1,8 @@
 
 #include <ntddk.h>
 
-#define _KERNEL_MODE
 #include "shared/DriverIoctl.h"
 #include "kernel/DriverOperations.h"
-#undef _KERNEL_MODE
 
 DRIVER_UNLOAD TshUnload;
 DRIVER_DISPATCH TshDispatchCreateClose;
