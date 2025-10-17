@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.env
+.venv
+venv/
+*.egg-info/
+.eggs/
+.dist/
+build/
+logs/*.log
+
+# VS/WDK builds
+*.obj
+*.pdb
+*.sys
+build/driver/
+DriverOutput/
+
+# Misc
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+.coverage
